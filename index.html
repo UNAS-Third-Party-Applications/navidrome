@@ -1,0 +1,551 @@
+<!--[if IE]>
+  <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN">
+<![endif]-->
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>U-NAS</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=8" />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="/apps/navidrome/css/index.css?v=6.0.1&"
+    />
+    <script>
+      window.top.UNAS.SetAppState('Navidrome', 'active')
+    </script>
+    <script language="JavaScript" type="text/javascript">
+      jQuery.noConflict()
+      ;(function () {
+        getConfig()
+        jQuery('#navidrome_enable').click(function () {
+          if (jQuery('#navidrome_enable').prop('checked') == false) {
+            jQuery("[name='navidrome_input']").attr('disabled', true)
+            jQuery("[class='unas_select']").attr('disabled', true)
+            if (jQuery('#navidrome_enable').attr('oldvalue') == 'enable')
+              jQuery('#navidrome_apply').attr('class', 'unas_button')
+          }
+          if (jQuery('#navidrome_enable').prop('checked') == true) {
+            jQuery("[name='navidrome_input']").attr('disabled', false)
+            jQuery("[class='unas_select']").attr('disabled', false)
+            jQuery('#navidrome_enable').attr('disabled', false)
+          }
+        })
+        jQuery('#navidrome_port').keyup(navidromeCheckPortFunc)
+      })()
+
+      function getConfig() {
+        jQuery('#navidrome_manager_waiting_content').attr(
+          'style',
+          'display:block'
+        )
+        jQuery('#navidrome_manager_waiting_logo').attr('style', 'display:block')
+        jQuery.ajax({
+          url: '/apps/navidrome/includes/services.php',
+          type: 'POST',
+          async: true,
+          contentType: 'application/json',
+          data: JSON.stringify({ token: UToken, action: 'getConfig' }),
+          dataType: 'json',
+          timeout: 20000,
+          success: function (data) {
+            if (data.pass == 'exit') {
+              parent.location.assign('/desktop/')
+            } else {
+              if (
+                data.enable == true ||
+                jQuery('#navidrome_enable').prop('checked')
+              ) {
+                jQuery('#navidrome_enable').prop('checked', true)
+                jQuery('#navidrome_enable').attr('oldvalue', 'enable')
+              } else {
+                jQuery("[name='navidrome_input']").attr('disabled', true)
+                jQuery("[class='unas_select']").attr('disabled', true)
+                jQuery('#navidrome_enable').prop('checked', false)
+                jQuery('#navidrome_enable').attr('oldvalue', 'disable')
+              }
+
+              if (data.enable) {
+                jQuery('#navidrome_manage').attr(
+                  'url',
+                  'http://' + window.location.hostname + ':' + data.port
+                )
+                jQuery('#navidrome_manage').attr(
+                  'style',
+                  'width: 120px; display:inline-block;'
+                )
+              } else {
+                jQuery('#navidrome_manage').attr('style', 'display:none;')
+              }
+
+              var shareFolders = data.shareFolders
+              var selectFolder = data.configDir
+              if (
+                data.homesExtConfigFolder &&
+                data.homesExtConfigFolder !== ''
+              ) {
+                if (shareFolders) {
+                  shareFolders.unshift({
+                    path: data.homesExtConfigFolder,
+                  })
+                } else {
+                  shareFolders = [
+                    {
+                      path: data.homesExtConfigFolder,
+                    },
+                  ]
+                }
+                if (
+                  selectFolder === null ||
+                  selectFolder === undefined ||
+                  selectFolder === ''
+                ) {
+                  selectFolder = data.homesExtConfigFolder
+                }
+              }
+              var shareFolderAvail = share_folder_list(
+                'navidrome_config_dir',
+                shareFolders,
+                selectFolder
+              )
+
+              jQuery('#navidrome_musicFolder').val(data.musicFolder)
+              jQuery('#navidrome_default_language').val(data.defaultLanguage)
+              jQuery('#navidrome_port').val(data.port)
+
+              if (shareFolderAvail) {
+                jQuery('#navidrome_apply').attr('class', 'unas_button')
+              } else {
+                jQuery('#navidrome_apply').attr('class', 'unas_button_disabled')
+              }
+            }
+            jQuery('#navidrome_manager_waiting_content').attr(
+              'style',
+              'display:none'
+            )
+            jQuery('#navidrome_manager_waiting_logo').attr(
+              'style',
+              'display:none'
+            )
+          },
+          error: function (XMLHttpRequest, textStatus, errorThrown) {
+            alert(textStatus)
+            jQuery('#navidrome_manager_waiting_content').attr(
+              'style',
+              'display:none'
+            )
+            jQuery('#navidrome_manager_waiting_logo').attr(
+              'style',
+              'display:none'
+            )
+          },
+        })
+      }
+
+      function navidromeCheckPortFunc() {
+        if (navidromeCheckPort())
+          jQuery('#navidrome_apply').attr('class', 'unas_button')
+        else jQuery('#navidrome_apply').attr('class', 'unas_button_disabled')
+      }
+
+      function navidromeCheckPort() {
+        var portState = false
+        var port = parseInt(jQuery.trim(jQuery('#navidrome_port').val()), 10)
+        if (isNaN(port)) {
+          jQuery('#navidrome_port').val('')
+        } else {
+          jQuery('#navidrome_port').val(port)
+        }
+        if (usedPort === port) {
+          // 端口可正在用的端口是一样的，不需要验证
+          jQuery('#navidrome_port_warning').attr('class', 'input_warning')
+          jQuery('#navidrome_port_warning').attr('title', '')
+          jQuery('#navidrome_port_warning').html('')
+          portState = true
+        } else if (port > 65535 || port < 1) {
+          jQuery('#navidrome_port_warning').attr('class', 'input_warning_info')
+          jQuery('#navidrome_port_warning').attr(
+            'title',
+            UNAS._('Port should between 1 and 65535')
+          )
+          jQuery('#navidrome_port_warning').html(
+            '* ' + UNAS._('Port should between 1 and 65535')
+          )
+        } else {
+          jQuery.ajax({
+            url: '/apps/navidrome/includes/services.php',
+            type: 'POST',
+            async: false,
+            contentType: 'application/json',
+            data: JSON.stringify({
+              token: UToken,
+              port: port,
+              action: 'checkport',
+            }),
+            timeout: 20000,
+            dataType: 'json',
+            success: function (data) {
+              if (data.err === 1) {
+                jQuery('#navidrome_port_warning').attr(
+                  'class',
+                  'input_warning_info'
+                )
+                jQuery('#navidrome_port_warning').attr(
+                  'title',
+                  UNAS._(data.msg)
+                )
+                jQuery('#navidrome_port_warning').html('* ' + UNAS._(data.msg))
+              } else {
+                jQuery('#navidrome_port_warning').attr('class', 'input_warning')
+                jQuery('#navidrome_port_warning').attr('title', '')
+                jQuery('#navidrome_port_warning').html('')
+                portState = true
+              }
+            },
+            error: function (XMLHttpRequest, textStatus, errorThrown) {
+              alert(textStatus)
+            },
+          })
+        }
+        return portState
+      }
+
+      function isNumeric(strval) {
+        var c
+        for (var i = 0; i < strval.length; i++) {
+          c = strval.charAt(i)
+          if (c < '0' || c > '9') {
+            return false
+          }
+        }
+        return true
+      }
+
+      function submit() {
+        jQuery('#navidrome_info').removeClass('error-info')
+        jQuery('#navidrome_info').removeClass('success-info')
+        jQuery('#navidrome_info').html('')
+        if (jQuery('#navidrome_apply').hasClass('unas_button_disabled')) {
+          return false
+        }
+        jQuery('#navidrome_manager_waiting_content').attr(
+          'style',
+          'display:block'
+        )
+        jQuery('#navidrome_manager_waiting_logo').attr('style', 'display:block')
+
+        var enable = jQuery('#navidrome_enable').prop('checked'),
+          configDir = jQuery('#navidrome_config_dir').val(),
+          musicFolder = jQuery('#navidrome_musicFolder').val(),
+          defaultLanguage = jQuery('#navidrome_default_language').val(),
+          port = jQuery('#navidrome_port').val()
+        var params = {
+          token: UToken,
+          enable: enable,
+          configDir: configDir,
+          musicFolder: musicFolder,
+          defaultLanguage: defaultLanguage,
+          port: port,
+          action: 'manage',
+        }
+        jQuery.ajax({
+          url: '/apps/navidrome/includes/services.php',
+          type: 'POST',
+          async: true,
+          contentType: 'application/json',
+          data: JSON.stringify(params),
+          timeout: 20000,
+          dataType: 'json',
+          success: function (data) {
+            if (data.err === 0) {
+              jQuery('#navidrome_info').removeClass('error-info')
+              jQuery('#navidrome_info').addClass('success-info')
+              jQuery('#navidrome_info').html(UNAS._('Operation successful'))
+            } else {
+              jQuery('#navidrome_info').removeClass('success-info')
+              jQuery('#navidrome_info').addClass('error-info')
+              jQuery('#navidrome_info').html(UNAS._(data.msg))
+            }
+            jQuery('#navidrome_manager_waiting_content').attr(
+              'style',
+              'display:none'
+            )
+            jQuery('#navidrome_manager_waiting_logo').attr(
+              'style',
+              'display:none'
+            )
+            getConfig()
+          },
+          error: function (XMLHttpRequest, textStatus, errorThrown) {
+            alert(textStatus)
+            jQuery('#navidrome_manager_waiting_content').attr(
+              'style',
+              'display:none'
+            )
+            jQuery('#navidrome_manager_waiting_logo').attr(
+              'style',
+              'display:none'
+            )
+          },
+        })
+      }
+
+      function openNavidrome() {
+        window.open(jQuery('#navidrome_manage').attr('url'), '_blank')
+      }
+
+      // 功能函数，缩略太长的字符串
+      function trunc(str, len) {
+        if (str == null) return ''
+        var str_length = 0
+        var str_cut = new String()
+        for (var i = 0; i < str.length; i++) {
+          a = str.charAt(i)
+          str_length++
+          if (escape(a).length > 4) {
+            str_length++
+          }
+          str_cut = str_cut.concat(a)
+          if (str_length > len) {
+            str_cut = str_cut.concat('...')
+            return str_cut
+          }
+        }
+        if (str_length <= len) {
+          return str
+        }
+      }
+
+      function share_folder_list(elementId, folders, folder_selected) {
+        var folder_opts = ''
+        var selected = false
+        var shareFolderAvail = false
+        if (folders === null || folders === undefined || folders.length === 0) {
+          // 没有共享文件夹可用
+          shareFolderAvail = false
+          folder_opts =
+            '<option value="">' +
+            UNAS._(
+              '##$@navidrome@$##Enable Home Dir or create a SHARE FOLDER before select##$@navidrome@$##'
+            ) +
+            '</option>'
+        } else {
+          shareFolderAvail = true
+          for (var i = 0; i < folders.length; i++) {
+            var folderPath = folders[i].path
+            folder_opts +=
+              '<option value="' +
+              folderPath +
+              '"' +
+              ' title="' +
+              folderPath +
+              '"'
+            if (folderPath == folder_selected) {
+              folder_opts += ' selected="selected"'
+              selected = true
+            }
+            folder_opts += '>' + trunc(folderPath, 30) + '</option>'
+          }
+        }
+        jQuery('#' + elementId).html(folder_opts)
+        if (shareFolderAvail && !selected) {
+          jQuery('#' + elementId + ' option:first').prop('selected', 'selected')
+        }
+        return shareFolderAvail
+      }
+    </script>
+  </head>
+  <body>
+    <div id="navidrome" class="navidrome_manager">
+      <div
+        id="navidrome_manager_waiting_content"
+        class="unas_loading_modal"
+        style="display: none"
+      ></div>
+      <div
+        id="navidrome_manager_waiting_logo"
+        class="unas_loading"
+        style="display: none"
+      ></div>
+      <div class="unas_title">
+        <div
+          id="poweroptions_manager_immediately_tab"
+          class="unas_tab_sel"
+          poweroptionsitemtableid="poweroptions_manager_immediately_page"
+        >
+          <span>##$@navidrome@$##Navidrome##$@navidrome@$##</span>
+        </div>
+      </div>
+      <div class="unas_content">
+        <div
+          id="jv-unas_content_left"
+          class="unas_content_left"
+          style="
+            position: absolute;
+            width: calc(100% - 150px);
+            left: 0;
+            bottom: 60px;
+            top: 60px;
+          "
+        >
+          <div id="navidrome_info" class="info-div"></div>
+          <div class="unas_items navidrome-item-li">
+            <ul>
+              <li class="unas_item_li" style="margin-bottom: 10px">
+                <span>
+                  <div class="unas_checkbox">
+                    <input type="checkbox" id="navidrome_enable" oldvalue="" />
+                    <label for="navidrome_enable"></label>
+                  </div>
+                </span>
+                <!-- prettier-ignore -->
+                <span>##$@navidrome@$##Enable Navidrome Service##$@navidrome@$##</span>
+              </li>
+              <li class="unas_item_li" style="margin-bottom: 10px">
+                <!-- prettier-ignore -->
+                <span class="span_left" style="margin-left: 40px" >##$@navidrome@$##Configuration Directory:##$@navidrome@$##</span>
+                <span>
+                  <select
+                    class="unas_select"
+                    id="navidrome_config_dir"
+                  ></select>
+                </span>
+                <label
+                  class=""
+                  id="navidrome_config_dir_warning"
+                  title=""
+                ></label>
+              </li>
+              <li class="unas_item_li" style="margin-bottom: 10px">
+                <span class="span_left" style="margin-left: 40px"
+                  >##$@navidrome@$##Music Folder:##$@navidrome@$##</span
+                ><span
+                  ><input
+                    type="text"
+                    id="navidrome_musicFolder"
+                    name="navidrome_input"
+                    class="unas_input" /></span
+                ><label
+                  class=""
+                  id="navidrome_musicFolder_warning"
+                  title=""
+                ></label>
+              </li>
+              <li class="unas_item_li" style="margin-bottom: 10px">
+                <!-- prettier-ignore -->
+                <span class="span_left" style="margin-left: 40px" >##$@navidrome@$##Default Language:##$@navidrome@$##</span>
+                <span>
+                  <select class="unas_select" id="navidrome_default_language">
+                    <option value="zh-Hans">简体中文</option>
+                    <option value="en">English</option>
+                    <option value="ko">한국어</option>
+                  </select>
+                </span>
+                <label
+                  class=""
+                  id="navidrome_default_language_warning"
+                  title=""
+                ></label>
+              </li>
+              <li class="unas_item_li" style="margin-bottom: 10px">
+                <span class="span_left" style="margin-left: 40px"
+                  >##$@navidrome@$##Port:##$@navidrome@$##</span
+                ><span
+                  ><input
+                    type="text"
+                    id="navidrome_port"
+                    name="navidrome_input"
+                    class="unas_input" /></span
+                ><label class="" id="navidrome_port_warning" title=""></label>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="unas_content_right">
+          <span class="navidrome_page_logo"></span>
+          <div class="project-addr">
+            <!-- prettier-ignore -->
+            <a href="https://github.com/navidrome/navidrome" target="_blank"
+              >##$@navidrome@$##Navidrome Project##$@navidrome@$##</a
+            >
+          </div>
+          <div class="project-addr">
+            <a
+              href="https://github.com/UNS-Third-Party-Applications/navidrome"
+              target="_blank"
+              >##$@navidrome@$##Current Project##$@navidrome@$##</a
+            >
+          </div>
+        </div>
+      </div>
+      <div class="unas_footer">
+        <a
+          id="navidrome_main_button"
+          target="_blank"
+          style="
+            width: 72px;
+            height: 32px;
+            display: inline-block;
+            margin-right: 10px;
+          "
+        >
+          <button
+            onClick="submit()"
+            class="unas_button_disabled"
+            id="navidrome_apply"
+          >
+            ##$@navidrome@$##Apply##$@navidrome@$##
+          </button>
+        </a>
+        <button
+          onClick="openNavidrome()"
+          class="unas_button"
+          id="navidrome_manage"
+          style="display: none"
+        >
+          ##$@navidrome@$##Manage App##$@navidrome@$##
+        </button>
+      </div>
+    </div>
+    <script type="text/javascript">
+      ;(function () {
+        var rt = document.getElementById('navidrome')
+        var pageTranslators = window.top.UNAS.CreateNodesTranslators(
+          rt.parentNode
+        )
+        var OnChangeLanguage = function (e) {
+          for (var i = 0; i < pageTranslators.length; i++) {
+            var node = pageTranslators[i].node
+            var p = pageTranslators[i].translateProperty
+            node[p] = window.top.UNAS._(pageTranslators[i].originalText)
+          }
+          if (
+            jQuery('#navidrome_port_warning').attr('class') ==
+            'input_warning_info'
+          ) {
+            navidromeCheckPort()
+          }
+        }
+        OnChangeLanguage()
+        window.top.UNAS.Event.addEvent('ChangeLanguage', OnChangeLanguage)
+        window.addEventListener(
+          'unload',
+          function (e) {
+            window.top.UNAS.Event.removeEvent(
+              'ChangeLanguage',
+              OnChangeLanguage
+            )
+            window.top.UNAS.SetAppState('Navidrome', 'inactive')
+          },
+          false
+        )
+      })()
+
+      jQuery('#jv-unas_content_left').mCustomScrollbar({
+        autoHideScrollbar: true,
+        theme: 'minimal-dark',
+      })
+    </script>
+  </body>
+</html>

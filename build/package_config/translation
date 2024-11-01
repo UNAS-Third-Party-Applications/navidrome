@@ -1,0 +1,54 @@
+﻿{
+    "UNASTranslation": [
+        {
+            "language": "简体中文",
+            "table": [
+                [
+                    "Navidrome",
+                    "0",
+                    "Navidrome"
+                ],
+                [
+                    "MultiMedia",
+                    "0",
+                    "多媒体"
+                ],
+                [
+                    "This is an U-NAS Navidrome App.",
+                    "0",
+                    "软件包提供了一个音乐管理服务，使用Navidrome实现。"
+                ],
+                [
+                    "QingCheng",
+                    "0",
+                    "青城"
+                ]
+            ]
+        },
+        {
+            "language": "한국어",
+            "table": [
+                [
+                    "Navidrome",
+                    "0",
+                    "Navidrome"
+                ],
+                [
+                    "MultiMedia",
+                    "0",
+                    "멀티미디어"
+                ],
+                [
+                    "This is an U-NAS audiobooks App.",
+                    "0",
+                    "패키지는Navidrome을사용하여구현되는음악관리서비스를제공합니다."
+                ],
+                [
+                    "QingCheng",
+                    "0",
+                    "QingCheng"
+                ]
+            ]
+        }
+    ]
+}
